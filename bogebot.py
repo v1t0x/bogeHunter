@@ -4,9 +4,9 @@ import time
 import os
 
 # URL et autres paramètres
-URL = "https://www.laboge.fr/bons-plans?title=asse&field_lieu_value=asse-&category=27&available%5B1%5D=1&field_begin_date_value=All"
+URL = "https://www.laboge.fr/bons-plans?title=asse&field_lieu_value=asse&category=27&field_begin_date_value=All"
 HEADERS = {"User-Agent": "Mozilla/5.0"}
-NTFY_URL = os.environ.get("NTFY_URL", "http://localhost:8080/asse-places")  # URL de ntfy
+NTFY_URL = "https://bogentfy.onrender.com/asse-places"  # URL de ntfy
 
 # Fonction pour récupérer les offres et envoyer une notification
 def check_offers():
@@ -36,7 +36,12 @@ def check_offers():
 
 # Fonction pour envoyer une notification via NTFY
 def send_notification(message):
-    response = requests.post(NTFY_URL, data=message)
+    headers = {
+        "Title": "Nouvelle offre ASSE",
+        "Priority": "urgent",
+        "Tags": "ticket"  # ou "test", ou ce que tu veux
+    }
+    response = requests.post(NTFY_URL, data=message, headers=headers)
     if response.status_code == 200:
         print(f"Notification envoyée : {message}")
     else:
@@ -52,7 +57,7 @@ def main():
         if current_offers and current_offers != last_offer:
             print("Nouvelles offres détectées.")
             for offer in current_offers:
-                message = f"🚨 {offer['titre']} ({offer['places']}) → {offer['lien']}"
+                message = f" {offer['titre']} ({offer['places']}) → {offer['lien']}"
                 send_notification(message)
             last_offer = current_offers
 
