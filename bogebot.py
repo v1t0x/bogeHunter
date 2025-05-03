@@ -8,6 +8,9 @@ URL = "https://www.laboge.fr/bons-plans?title=asse&field_lieu_value=asse&categor
 HEADERS = {"User-Agent": "Mozilla/5.0"}
 NTFY_URL = "https://bogentfy.onrender.com/asse-places"  # URL de ntfy
 
+# Ensemble global pour stocker les offres déjà vues
+SEEN_OFFERS = set()
+
 # Fonction pour récupérer les offres et envoyer une notification
 def check_offers():
     response = requests.get(URL, headers=HEADERS)
@@ -20,7 +23,9 @@ def check_offers():
         return None
 
     # On récupère le titre et le nombre de places pour chaque offre
-    offers = []
+    all_offers = []
+    new_offers = []
+    
     for offre in offres:
         titre_elem = offre.select_one("p.teaser__title")
         places_elem = offre.select_one("span.teaser__slots")
@@ -30,9 +35,19 @@ def check_offers():
         titre = titre_elem.text.strip() if titre_elem else "Titre inconnu"
         places = places_elem.text.strip() if places_elem else "Places inconnues"
 
-        offers.append({"titre": titre, "places": places, "lien": lien_complet})
+        # Créer un identifiant unique pour cette offre
+        offer_id = f"{titre}|{places}|{lien_complet}"
+        offer_data = {"titre": titre, "places": places, "lien": lien_complet}
+        
+        all_offers.append(offer_data)
+        
+        # Vérifier si c'est une nouvelle offre
+        if offer_id not in SEEN_OFFERS:
+            SEEN_OFFERS.add(offer_id)
+            new_offers.append(offer_data)
 
-    return offers
+    # Retourner uniquement les nouvelles offres
+    return new_offers if new_offers else None
 
 # Fonction pour envoyer une notification via NTFY
 def send_notification(message):
@@ -49,21 +64,18 @@ def send_notification(message):
 
 # Fonction principale
 def main():
-    last_offer = None
     while True:
         print("Vérification des offres...")
-        current_offers = check_offers()
+        new_offers = check_offers()
 
-        if current_offers and current_offers != last_offer:
-            print("Nouvelles offres détectées.")
-            for offer in current_offers:
+        if new_offers:
+            print(f"{len(new_offers)} nouvelles offres détectées.")
+            for offer in new_offers:
                 message = f" {offer['titre']} ({offer['places']}) → {offer['lien']}"
                 send_notification(message)
-            last_offer = current_offers
 
         # Attendre 5 minutes avant la prochaine vérification
-        time.sleep(300)
+        time.sleep(30)
 
 if __name__ == "__main__":
     main()
-
